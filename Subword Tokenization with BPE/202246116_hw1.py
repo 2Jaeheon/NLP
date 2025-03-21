@@ -64,7 +64,7 @@ class BPETrainer:
       # 연속된 pair의 빈도를 계산
       for i in range(len(symbols) - 1):
         pair = (symbols[i], symbols[i + 1])
-        pair_freq[pair] = freq + 1
+        pair_freq[pair] += freq
 
     return pair_freq
 
@@ -106,7 +106,7 @@ if __name__ == '__main__':
   for pair, freq in sorted(pair_freq.items(), key=lambda x: -x[1]):
     print(f"{pair} → {freq}")
     count += 1
-    if count >= 20:  # 상위 20개만 보기
+    if count >= 1000:  # 상위 20개만 보기
       break
 
 # if __name__ == '__main__':
