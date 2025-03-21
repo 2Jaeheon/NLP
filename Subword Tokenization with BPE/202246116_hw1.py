@@ -8,3 +8,11 @@
 # 6. 토큰화 알고리즘 구현
 # 7. 실행 제어 로직 구성
 
+class BPETrainer:
+  def __init__(self):
+    print("BPETrainer")
+
+
+class BPETokenizer:
+  def __init__(self):
+    print("BPETokenizer")
