@@ -64,9 +64,45 @@ class BPETrainer:
       # 연속된 pair의 빈도를 계산
       for i in range(len(symbols) - 1):
         pair = (symbols[i], symbols[i + 1])
+        # pair_freq[pair] = freq + 1은 그냥 마지막 값으로 덮어쓰는 것. 기존 값에 freq를 더해줘야함.
         pair_freq[pair] += freq
 
     return pair_freq
+
+  # 가장 빈도가 높은 pair를 찾아내는 함수
+  # best_pair: 가장 빈도가 높은 pair
+  def merge_most_frequent_pair(self, best_pair):
+    pattern = re.escape(' '.join(best_pair))
+    replacement = ''.join(
+        best_pair)  # 병합해서 만든 new Token! -> 이제 이걸 vocab에서 찾아서 병합해야함
+    target = list(best_pair)
+    new_vocab = {}
+
+    # 병합 대상 쌍을 정규식으로 찾아서 병합된 문자열로 바꾼다.
+    for word, freq in self.vocab.items():
+      symbols = word.split()
+      new_symbols = []
+      i = 0
+
+      # 현재 문자 symbols[i] 와 다음 문자 symbols[i+1]가 best_pair와 같으면 병합
+      # 즉, 연속된 pair를 찾아서 병합시켜주는 것!
+      while i < len(symbols):
+        # 병합 대상 문자쌍이 등장하는지 확인
+        if i < len(symbols) - 1 and symbols[i] == target[0] and symbols[
+          i + 1] == target[1]:
+          new_symbols.append(replacement)  # 병합!
+          i += 2  # 2개 문자를 한꺼번에 처리했으므로 2칸 이동 (i += 1을 하면 안 됨)
+        else:
+          new_symbols.append(symbols[i])
+          i += 1
+      # while 끝
+      new_word = ' '.join(
+          new_symbols)  # 병합된 결과(new_symbols)를 다시 문자열로 변환 -> t h e => th e
+      new_vocab[new_word] = freq
+    # for 끝
+    self.vocab = new_vocab
+    self.merge_rules.append(best_pair)
+  # merge_most_frequent_pair 끝
 
 
 # BPE 토크나이저 클래스
@@ -107,6 +143,23 @@ if __name__ == '__main__':
     print(f"{pair} → {freq}")
     count += 1
     if count >= 1000:  # 상위 20개만 보기
+      break
+
+  # Step 4: 가장 빈도 높은 쌍 병합 테스트
+  print("\n가장 많이 등장한 문자쌍 병합 테스트")
+  pair_freq = trainer.get_pair_frequency()
+  best_pair = max(pair_freq, key=pair_freq.get)  # 가장 많이 나온 쌍 선택
+  print(f"가장 많이 나온 pair: {best_pair}")
+
+  trainer.merge_most_frequent_pair(best_pair)
+
+  # 병합된 후 vocab 상위 10개 확인
+  print("\n병합 이후 vocab 샘플:")
+  count = 0
+  for word, freq in trainer.vocab.items():
+    print(f"{word} → {freq}")
+    count += 1
+    if count >= 30:
       break
 
 # if __name__ == '__main__':
