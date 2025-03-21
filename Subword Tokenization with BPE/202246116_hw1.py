@@ -51,6 +51,23 @@ class BPETrainer:
       else:
         self.vocab[word] = 1
 
+  # 연속된 pair의 빈도를 계산해야함.
+  # 연속된 pair의 빈도를 각 단어를 문자 단위로 분리한 후, pair로 만들어서 등장 빈도만큼 누적시킴
+  def get_pair_frequency(self):
+    pair_freq = defaultdict(int)
+
+    # word는 문자 단위로 분리된 단어, freq는 해당 단어의 빈도
+    for word, freq in self.vocab.items():
+      # 단어를 문자 단위로 분리
+      symbols = word.split()
+
+      # 연속된 pair의 빈도를 계산
+      for i in range(len(symbols) - 1):
+        pair = (symbols[i], symbols[i + 1])
+        pair_freq[pair] = freq + 1
+
+    return pair_freq
+
 
 # BPE 토크나이저 클래스
 class BPETokenizer:
@@ -62,23 +79,34 @@ class BPETokenizer:
     return {}
 
 
+# 메인 함수 -> 실행 테스트
 if __name__ == '__main__':
   trainer = BPETrainer(max_vocab_size=30000)
 
   # Step 1: 전처리
   corpus = trainer.preprocess_text('pg100.txt')
-  print("✅ 전처리 결과 샘플:")
+  print(" 전처리 결과 샘플:")
   for word in corpus[:10]:  # 앞에서 10개만 보기
     print(word)
 
   # Step 2: vocab 구성
   trainer.build_vocab(corpus)
-  print("\n✅ Vocab 결과 샘플:")
+  print("\n Vocab 결과 샘플:")
   count = 0
   for word, freq in trainer.vocab.items():
     print(f"{word} → {freq}")
     count += 1
     if count >= 50:  # 앞에서 50개만 보기
+      break
+
+  # Step 3: 문자쌍 빈도 테스트
+  pair_freq = trainer.get_pair_frequency()
+  print("\n 문자쌍(pair) 빈도 샘플:")
+  count = 0
+  for pair, freq in sorted(pair_freq.items(), key=lambda x: -x[1]):
+    print(f"{pair} → {freq}")
+    count += 1
+    if count >= 20:  # 상위 20개만 보기
       break
 
 # if __name__ == '__main__':
