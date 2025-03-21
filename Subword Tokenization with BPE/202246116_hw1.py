@@ -10,6 +10,7 @@
 
 import argparse  # 파이썬에서 명령행 옵션을 쉽게 파싱하기 위한 모듈
 import re
+from collections import defaultdict
 
 
 # BPE 학습을 위한 클래스
@@ -41,6 +42,15 @@ class BPETrainer:
 
     return processed
 
+  # vocab 구성 함수
+  def build_vocab(self, corpus):
+    self.vocab = {}
+    for word in corpus:
+      if word in self.vocab:
+        self.vocab[word] += 1
+      else:
+        self.vocab[word] = 1
+
 
 # BPE 토크나이저 클래스
 class BPETokenizer:
@@ -53,12 +63,23 @@ class BPETokenizer:
 
 
 if __name__ == '__main__':
-  # 임시 테스트용 코드
   trainer = BPETrainer(max_vocab_size=30000)
+
+  # Step 1: 전처리
   corpus = trainer.preprocess_text('pg100.txt')
-  print("전처리된 결과 예시:")
-  for i in range(10000):  # 앞에서 10개만 출력
-    print(corpus[i])
+  print("✅ 전처리 결과 샘플:")
+  for word in corpus[:10]:  # 앞에서 10개만 보기
+    print(word)
+
+  # Step 2: vocab 구성
+  trainer.build_vocab(corpus)
+  print("\n✅ Vocab 결과 샘플:")
+  count = 0
+  for word, freq in trainer.vocab.items():
+    print(f"{word} → {freq}")
+    count += 1
+    if count >= 50:  # 앞에서 50개만 보기
+      break
 
 # if __name__ == '__main__':
 #   print("Hello, BPE!")
