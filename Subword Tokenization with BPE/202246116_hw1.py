@@ -102,7 +102,45 @@ class BPETrainer:
     # for 끝
     self.vocab = new_vocab
     self.merge_rules.append(best_pair)
+
   # merge_most_frequent_pair 끝
+
+  # BPE 학습 함수
+  # 지금까지 만든 함수들을 활용하여 BPE 학습을 진행하는 함수
+  # corpus_path: 학습 데이터 파일 경로
+  def train(self, corpus_path):
+    # 데이터 전처리
+    corpus = self.preprocess_text(corpus_path)
+    # vocab 구성
+    self.build_vocab(corpus)
+    # 디버깅을 위해서 구현
+    prev_vocab_size = len(self.vocab)
+
+    # BPE 학습 루프
+    initial_char_count = len(
+        set(symbol for word in self.vocab for symbol in word.split()))
+
+    # vocab의 크기가 max_vocab_size가 될 때까지 반복
+    # 다음이 교재에서 다룬 BPE 학습 루프임 -> 계속 반복해서 병합해나가는 과정
+    while len(self.merge_rules) + initial_char_count < self.max_vocab_size:
+      # 문자쌍 빈도 계산
+      pair_freq = self.get_pair_frequency()
+      # pair_freq가 비어있으면 더 이상 병합할 pair가 없다는 의미
+      if not pair_freq:
+        break
+
+      # 가장 빈도가 높은 pair 병합
+      best_pair = max(pair_freq, key=pair_freq.get)
+
+      # 병합된 pair로 vocab 업데이트
+      self.merge_most_frequent_pair(best_pair)
+
+      # 100번 진행할 때마다 진행 상황 출력 -> 디버깅을 위해서 구현
+      if len(self.merge_rules) % 100 == 0:
+        curr_vocab_size = len(self.vocab)
+        print(f"\n[진행 상황: {len(self.merge_rules)}회 병합 완료]")
+        print(f"가장 많이 등장한 pair: {best_pair} → {pair_freq[best_pair]}회")
+        prev_vocab_size = curr_vocab_size
 
 
 # BPE 토크나이저 클래스
@@ -115,52 +153,26 @@ class BPETokenizer:
     return {}
 
 
-# 메인 함수 -> 실행 테스트
 if __name__ == '__main__':
-  trainer = BPETrainer(max_vocab_size=30000)
+  print("BPETrainer.train() 테스트 시작")
 
-  # Step 1: 전처리
-  corpus = trainer.preprocess_text('pg100.txt')
-  print(" 전처리 결과 샘플:")
-  for word in corpus[:10]:  # 앞에서 10개만 보기
-    print(word)
+  # 1. BPETrainer 객체 생성
+  trainer = BPETrainer(max_vocab_size=5000)
 
-  # Step 2: vocab 구성
-  trainer.build_vocab(corpus)
-  print("\n Vocab 결과 샘플:")
-  count = 0
-  for word, freq in trainer.vocab.items():
-    print(f"{word} → {freq}")
-    count += 1
-    if count >= 50:  # 앞에서 50개만 보기
+  # 2. train 함수 실행
+  trainer.train('pg100.txt')
+
+  print("\n학습된 Vocab 샘플 (30개)")
+  for i, (word, freq) in enumerate(trainer.vocab.items()):
+    print(f"{i + 1}. {word} → {freq}")
+    if i >= 29:
       break
 
-  # Step 3: 문자쌍 빈도 테스트
-  pair_freq = trainer.get_pair_frequency()
-  print("\n 문자쌍(pair) 빈도 샘플:")
-  count = 0
-  for pair, freq in sorted(pair_freq.items(), key=lambda x: -x[1]):
-    print(f"{pair} → {freq}")
-    count += 1
-    if count >= 1000:  # 상위 20개만 보기
-      break
+  print("\n병합된 Merge Rules 샘플 (30개)")
+  for i, pair in enumerate(trainer.merge_rules[:30]):
+    print(f"{i + 1}. {pair}")
 
-  # Step 4: 가장 빈도 높은 쌍 병합 테스트
-  print("\n가장 많이 등장한 문자쌍 병합 테스트")
-  pair_freq = trainer.get_pair_frequency()
-  best_pair = max(pair_freq, key=pair_freq.get)  # 가장 많이 나온 쌍 선택
-  print(f"가장 많이 나온 pair: {best_pair}")
-
-  trainer.merge_most_frequent_pair(best_pair)
-
-  # 병합된 후 vocab 상위 10개 확인
-  print("\n병합 이후 vocab 샘플:")
-  count = 0
-  for word, freq in trainer.vocab.items():
-    print(f"{word} → {freq}")
-    count += 1
-    if count >= 30:
-      break
+  print("\ntrain() 함수 테스트 완료")
 
 # if __name__ == '__main__':
 #   print("Hello, BPE!")
