@@ -143,7 +143,7 @@ class BPETrainer:
       if len(self.merge_rules) % 100 == 0:
         curr_vocab_size = len(self.vocab)
         print(f"\n[진행 상황: {len(self.merge_rules)}회 병합 완료]")
-        print(f"가장 많이 등장한 pair: {best_pair} → {pair_freq[best_pair]}회")
+        print(f"최근 저장된 pair: {best_pair} → {pair_freq[best_pair]}회")
         prev_vocab_size = curr_vocab_size
 
   # save_vocab_and_rules 함수 구현 -> vocab.txt에 vocab과 merge rules 저장
@@ -181,7 +181,7 @@ class BPETokenizer:
       line = line.strip()
 
       # "==== Merge Rules ====" 라인을 찾으면 flag를 True로 변경 => 병합 규칙을 parsing
-      if line == "# ==== Merge Rules ====":
+      if line == "==== Merge Rules ====":
         in_merge_section = True
         continue
 
@@ -241,39 +241,42 @@ class BPETokenizer:
         outfile.write(' '.join(tokenized_line) + '\n')
 
 
+# main 함수 -> 학습(train) 모드와 추론(infer) 모드를 구분지어서 실행하도록 함.
 if __name__ == '__main__':
-  print("BPETokenizer 전체 추론 테스트 시작")
+  parser = argparse.ArgumentParser()
 
-  # 1. BPETokenizer 객체 생성 (vocab.txt에서 merge_rules를 불러옴)
-  tokenizer = BPETokenizer('vocab.txt')
+  # 학습 모드 (train) 인자
+  parser.add_argument('--train', help='학습 데이터 경로 (예: pg100.txt)')
+  parser.add_argument('--max_vocab', type=int, help='최대 vocab 크기')
+  parser.add_argument('--vocab', help='학습된 vocab 및 merge rules 저장 경로')
 
-  # 2. infer.txt를 읽고 BPE 토큰화를 수행하여 output.txt에 저장
-  tokenizer.tokenize_file('infer.txt', 'output.txt')
+  # 추론 모드 (infer) 인자
+  parser.add_argument('--infer', help='merge rules가 포함된 vocab 파일 경로')
+  parser.add_argument('--input', help='토큰화할 입력 파일 경로')
+  parser.add_argument('--output', help='토큰화된 결과 저장 경로')
 
-  print("추론 완료: infer.txt → output.txt")
+  # 인자 parsing
+  args = parser.parse_args()
 
-# if __name__ == '__main__':
-#   print("Hello, BPE!")
-#   parser = argparse.ArgumentParser()
-#   # 학습 관련 옵션
-#   parser.add_argument('--train')
-#   parser.add_argument('--max_vocab', type=int)
-#   parser.add_argument('--vocab')
-#   parser.add_argument('--merge')
-#
-#   # 추론 관련 옵션
-#   parser.add_argument('--infer')
-#   parser.add_argument('--input')
-#   parser.add_argument('--output')
-#
-#   # 파싱
-#   args = parser.parse_args()
-#
-#   # 학습 또는 추론에 따른 분기
-#   if args.train:
-#     trainer = BPETrainer(args.max_vocab)
-#     # 추후 구현할 함수들
-#
-#   elif args.infer:
-#     tokenizer = BPETokenizer(args.merge)
-#     # 추후 구현할 함수들
+  # 학습 모드
+  if args.train and args.max_vocab and args.vocab:
+    print("학습 모드 실행")
+    trainer = BPETrainer(args.max_vocab)
+    trainer.train(args.train)
+    trainer.save_vocab_and_rules(args.vocab)
+    print("학습 완료!")
+
+  # 추론 모드
+  elif args.infer and args.input and args.output:
+    print("추론 모드 실행 중...")
+    tokenizer = BPETokenizer(args.infer)
+    tokenizer.tokenize_file(args.input, args.output)
+    print("추론 완료! 결과가 저장되었습니다.")
+
+  # 문제가 발생하는 경우 (인자 오류)
+  else:
+    print("잘못된 인자입니다. 다음 예시를 참고하세요:\n")
+    print(
+        "학습: python 202246116_hw1.py --train pg100.txt --max_vocab 30000 --vocab vocab.txt")
+    print(
+        "추론: python 202246116_hw1.py --infer vocab.txt --input infer.txt --output output.txt")
