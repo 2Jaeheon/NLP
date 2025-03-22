@@ -1,4 +1,4 @@
-# ==== Vocabulary ====
+==== Vocabulary ====
 the 30550
 project 100
 gutenberg 87
@@ -30059,7 +30059,7 @@ vol un te er 1
 p g 1
 news letter 1
 
-# ==== Merge Rules ====
+==== Merge Rules ====
 t h
 a n
 e r

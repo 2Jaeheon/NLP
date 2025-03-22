@@ -4,13 +4,12 @@
 # 2. 초기 vocab 구성
 # 3. BPE 학습 루트 구현
 # 4. 학습 결과(vocab, merge rules) 저장
-# 5. 병합 규칙 읽어오기
-# 6. 토큰화 알고리즘 구현
-# 7. 실행 제어 로직 구성
+# 5. merge_rules & vocab 불러오기
+# 6. BPE 알고리즘을 통한 Tokenization
+# 7. 실행 및 결과
 
 import argparse  # 파이썬에서 명령행 옵션을 쉽게 파싱하기 위한 모듈
 import re
-from collections import defaultdict
 
 
 # BPE 학습을 위한 클래스
@@ -20,7 +19,7 @@ class BPETrainer:
     self.vocab = {}
     self.merge_rules = []
 
-  # 데이터 전처리 함수 -> re를 이용해 특수문자 제거, 단어 단위로 나눈 뒤, 각 단어를 문자 단위로 분리
+  # 데이터 전처리 함수 -> re(정규화 도와주는 도구 -> 정규표현식 배웠으니 써먹어보자)를 이용해 특수문자 제거하고 단어 단위로 나눈 후 단어를 문자 단위로 분리
   def preprocess_text(self, file_path):
     with open(file_path, 'r', encoding='utf-8') as f:
       text = f.read().lower()
@@ -43,6 +42,7 @@ class BPETrainer:
     return processed
 
   # vocab 구성 함수
+  # corpus: 각 단어를 문자 단위로 분리한 리스트
   def build_vocab(self, corpus):
     self.vocab = {}
     for word in corpus:
@@ -51,41 +51,44 @@ class BPETrainer:
       else:
         self.vocab[word] = 1
 
-  # 연속된 pair의 빈도를 계산해야함.
   # 연속된 pair의 빈도를 각 단어를 문자 단위로 분리한 후, pair로 만들어서 등장 빈도만큼 누적시킴
   def get_pair_frequency(self):
-    pair_freq = defaultdict(int)
+    pair_freq = {}
 
-    # word는 문자 단위로 분리된 단어, freq는 해당 단어의 빈도
+    # word: 단어, freq: 빈도
     for word, freq in self.vocab.items():
       # 단어를 문자 단위로 분리
       symbols = word.split()
 
-      # 연속된 pair의 빈도를 계산
+      # 연속된 pair의 빈도를 계산함.
       for i in range(len(symbols) - 1):
         pair = (symbols[i], symbols[i + 1])
-        # pair_freq[pair] = freq + 1은 그냥 마지막 값으로 덮어쓰는 것. 기존 값에 freq를 더해줘야함.
-        pair_freq[pair] += freq
+        # pair_freq[pair] = freq + 1은 오류 -> 기존 값에 freq를 더해줘야함.
+        if pair in pair_freq:
+          pair_freq[pair] += freq
+        else:
+          pair_freq[pair] = freq
 
     return pair_freq
 
   # 가장 빈도가 높은 pair를 찾아내는 함수
-  # best_pair: 가장 빈도가 높은 pair
+  # best_pair: 가장 빈도가 높은 pair -> 얘를 찾아서 병합시키는 것.
   def merge_most_frequent_pair(self, best_pair):
     pattern = re.escape(' '.join(best_pair))
-    replacement = ''.join(
-        best_pair)  # 병합해서 만든 new Token! -> 이제 이걸 vocab에서 찾아서 병합해야함
+
+    # 병합해서 만든 new Token! -> 이제 이걸 vocab에서 찾아서 병합해야함
+    replacement = ''.join(best_pair)
     target = list(best_pair)
     new_vocab = {}
 
-    # 병합 대상 쌍을 정규식으로 찾아서 병합된 문자열로 바꾼다.
+    # pair을 찾아서 문자열로 바꿈.
     for word, freq in self.vocab.items():
       symbols = word.split()
       new_symbols = []
       i = 0
 
-      # 현재 문자 symbols[i] 와 다음 문자 symbols[i+1]가 best_pair와 같으면 병합
-      # 즉, 연속된 pair를 찾아서 병합시켜주는 것!
+      # 현재 문자 symbols[i] 와 다음 문자 symbols[i+1]가 best_pair(다빈도 쌍)와 같으면 병합.
+      # 즉, 연속된 pair를 찾아서 이를 vocab에 반영 및 merge_rules에 추가
       while i < len(symbols):
         # 병합 대상 문자쌍이 등장하는지 확인
         if i < len(symbols) - 1 and symbols[i] == target[0] and symbols[
@@ -96,8 +99,9 @@ class BPETrainer:
           new_symbols.append(symbols[i])
           i += 1
       # while 끝
-      new_word = ' '.join(
-          new_symbols)  # 병합된 결과(new_symbols)를 다시 문자열로 변환 -> t h e => th e
+
+      # 병합된 결과(new_symbols)를 다시 문자열로 변환 -> t h e => th e
+      new_word = ' '.join(new_symbols)
       new_vocab[new_word] = freq
     # for 끝
     self.vocab = new_vocab
@@ -105,15 +109,15 @@ class BPETrainer:
 
   # merge_most_frequent_pair 끝
 
-  # BPE 학습 함수
-  # 지금까지 만든 함수들을 활용하여 BPE 학습을 진행하는 함수
-  # corpus_path: 학습 데이터 파일 경로
+  # 지금까지 만든 함수들을 통해 BPE 알고리즘을 수행
+  # corpus_path: 학습 데이터 파일 경로 -> 경로만 제공하면 알아서 수행.
+  # main에서 train() 함수 하나만 출력해서 사용할 수 있도록 함.
   def train(self, corpus_path):
-    # 데이터 전처리
+    # 전처리 과정
     corpus = self.preprocess_text(corpus_path)
     # vocab 구성
     self.build_vocab(corpus)
-    # 디버깅을 위해서 구현
+    # 디버깅을 위해서 구현 -> 학습 진행 상황을 보기 위함.
     prev_vocab_size = len(self.vocab)
 
     # BPE 학습 루프
@@ -143,12 +147,16 @@ class BPETrainer:
         prev_vocab_size = curr_vocab_size
 
   # save_vocab_and_rules 함수 구현 -> vocab.txt에 vocab과 merge rules 저장
+  # 두 가지를 한 파일에 저장하기 위해서 구분을 사용하였음. (==== ~~~~ ====)
   def save_vocab_and_rules(self, vocab_path):
     with open(vocab_path, 'w', encoding='utf-8') as f:
-      f.write("# ==== Vocabulary ====\n")
+      # vocab를 먼저 저장
+      f.write("==== Vocabulary ====\n")
       for word, freq in self.vocab.items():
         f.write(f"{word} {freq}\n")
-      f.write("\n# ==== Merge Rules ====\n")
+
+      # merge rules를 저장
+      f.write("\n==== Merge Rules ====\n")
       for pair in self.merge_rules:
         f.write(f"{pair[0]} {pair[1]}\n")
 
@@ -172,15 +180,16 @@ class BPETokenizer:
     for line in lines:
       line = line.strip()
 
-      # "# ==== Merge Rules ====" 라인을 찾으면, 이후 줄부터 병합 규칙으로 간주
+      # "==== Merge Rules ====" 라인을 찾으면 flag를 True로 변경 => 병합 규칙을 parsing
       if line == "# ==== Merge Rules ====":
         in_merge_section = True
         continue
 
-      # 병합 규칙 줄만 파싱
+      # 병합 규칙 줄만 parsing
       if in_merge_section and line:
         parts = line.split()
         # 공백으로 split 해서 두 개의 토큰인 경우만 merge_rules에 추가
+        # 이는 에러 방지 + 유효한 병합 규칙만 필터링을 위함임
         if len(parts) == 2:
           merge_rules.append((parts[0], parts[1]))
     # 최종적으로 병합 규칙 리스트를 반환 (ex: [('t', 'h'), ('h', 'e'), ...])
@@ -197,7 +206,7 @@ class BPETokenizer:
       while i < len(tokens) - 1:
         # merge_rule[0]과 merge_rule[1]이 연속적으로 나오는 경우 병합
         if tokens[i] == merge_rule[0] and tokens[i + 1] == merge_rule[1]:
-          # 병합 대상이 되는 pair를 하나의 subword로 병합
+          # 병합 대상이 되는 pair를 하나로 묶어서 token에 추가
           tokens = tokens[:i] + [''.join(merge_rule)] + tokens[i + 2:]
           # 0보다 작아지지 않도록 max 함수 사용
           # i를 1 줄여서 병합된 subword 이전 인덱스로 이동
@@ -207,26 +216,28 @@ class BPETokenizer:
           i += 1
 
     # 첫 토큰 제외하고 앞에 ## 붙이기
+    # 과제에서 요구하는 형식 -> white space와 구분을 하기 위함임.
     if not tokens:
       return []
     return [tokens[0]] + [f"##{t}" for t in tokens[1:]]
 
-  # input_path에 있는 텍스트 파일을 읽고, 각 단어에 BPE 토큰화를 적용하여 output_path에 저장하는 함수
-  # main 함수에서는 tokenize_file 함수 하나만 출력해서 사용할 수 있도록 함.
+  # input_path에 있는 텍스트 파일을 읽고, BPE 토큰화를 적용하여 output_path에 저장하는 함수
+  # main 함수에서는 tokenize_file 함수 하나만 사용할 수 있도록 함.
   def tokenize_file(self, input_path, output_path):
     # 파일 열기 (infile: 입력 파일, outfile: 출력 파일)
     with (open(input_path, 'r', encoding='utf-8') as infile,
           open(output_path, 'w', encoding='utf-8') as outfile):
       # 한 줄씩 읽어서 처리
       for line in infile:
-        # 전처리 과정을 거침
+        # 전처리 과정
         words = line.strip().lower().split()
         tokenized_line = []
         # 각 단어에 대해 BPE 토큰화 적용 -> tokenized_line에 추가
         for word in words:
           tokens = self.apply_BPE(word)
           tokenized_line.extend(tokens)
-        # tokenized_line을 다시 문자열로 변환하여 출력 파일에 기록
+
+        # tokenized_line을 outfile에 씀.
         outfile.write(' '.join(tokenized_line) + '\n')
 
 
