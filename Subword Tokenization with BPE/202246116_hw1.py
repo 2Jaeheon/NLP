@@ -142,6 +142,7 @@ class BPETrainer:
         print(f"가장 많이 등장한 pair: {best_pair} → {pair_freq[best_pair]}회")
         prev_vocab_size = curr_vocab_size
 
+  # save_vocab_and_rules 함수 구현 -> vocab.txt에 vocab과 merge rules 저장
   def save_vocab_and_rules(self, vocab_path):
     with open(vocab_path, 'w', encoding='utf-8') as f:
       f.write("# ==== Vocabulary ====\n")
@@ -157,34 +158,47 @@ class BPETokenizer:
   def __init__(self, merge_path: str):
     self.merge_rules = self.load_merge_rules(merge_path)
 
+  # vocab.txt 파일에서 merge_rules를 읽어오는 함수
   def load_merge_rules(self, merge_path: str):
-    # 추후 구현 예정
-    return {}
+
+    merge_rules = []
+    # 파일 오픈
+    with open(merge_path, 'r', encoding='utf-8') as f:
+      lines = f.readlines()
+
+    # 현재 읽고 있는 섹션이 merge_rules인지 여부를 확인하기 위한 flag
+    in_merge_section = False
+
+    for line in lines:
+      line = line.strip()
+
+      # "# ==== Merge Rules ====" 라인을 찾으면, 이후 줄부터 병합 규칙으로 간주
+      if line == "# ==== Merge Rules ====":
+        in_merge_section = True
+        continue
+
+      # 병합 규칙 줄만 파싱
+      if in_merge_section and line:
+        parts = line.split()
+        # 공백으로 split 해서 두 개의 토큰인 경우만 merge_rules에 추가
+        if len(parts) == 2:
+          merge_rules.append((parts[0], parts[1]))
+    # 최종적으로 병합 규칙 리스트를 반환 (ex: [('t', 'h'), ('h', 'e'), ...])
+    return merge_rules
 
 
 if __name__ == '__main__':
-  print("BPETrainer.train() 테스트 시작")
+  print("BPETokenizer 테스트 시작")
 
-  # 1. BPETrainer 객체 생성
-  trainer = BPETrainer(max_vocab_size=10000)
+  # 1. BPETokenizer 객체 생성
+  tokenizer = BPETokenizer('vocab.txt')
 
-  # 2. train 함수 실행
-  trainer.train('pg100.txt')
-
-  # 3. save_vocab_and_rules 함수 실행 -> vocab.txt, merge_rules.txt 파일 생성 및 저장
-  trainer.save_vocab_and_rules('vocab.txt')
-
-  print("\n학습된 Vocab 샘플 (30개)")
-  for i, (word, freq) in enumerate(trainer.vocab.items()):
-    print(f"{i + 1}. {word} → {freq}")
-    if i >= 29:
-      break
-
-  print("\n병합된 Merge Rules 샘플 (30개)")
-  for i, pair in enumerate(trainer.merge_rules[:30]):
+  # 2. merge_rules 출력 (확인용)
+  print("\n불러온 Merge Rules 샘플 (30개)")
+  for i, pair in enumerate(tokenizer.merge_rules[:30]):
     print(f"{i + 1}. {pair}")
 
-  print("\ntrain() 함수 테스트 완료")
+  print("\nload_merge_rules() 테스트 완료")
 
 # if __name__ == '__main__':
 #   print("Hello, BPE!")
