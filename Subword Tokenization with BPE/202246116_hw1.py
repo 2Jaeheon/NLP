@@ -186,6 +186,31 @@ class BPETokenizer:
     # 최종적으로 병합 규칙 리스트를 반환 (ex: [('t', 'h'), ('h', 'e'), ...])
     return merge_rules
 
+  # 단어에 대해 BPE merge rule을 적용하는 함수
+  def apply_BPE(self, word: str):
+    tokens = list(word)
+
+    # 병합 규칙을 순서대로 적용
+    for merge_rule in self.merge_rules:
+      i = 0
+
+      while i < len(tokens) - 1:
+        # merge_rule[0]과 merge_rule[1]이 연속적으로 나오는 경우 병합
+        if tokens[i] == merge_rule[0] and tokens[i + 1] == merge_rule[1]:
+          # 병합 대상이 되는 pair를 하나의 subword로 병합
+          tokens = tokens[:i] + [''.join(merge_rule)] + tokens[i + 2:]
+          # 0보다 작아지지 않도록 max 함수 사용
+          # i를 1 줄여서 병합된 subword 이전 인덱스로 이동
+          # 따라서 병합된 subword에 대해 다시 한 번 더 병합을 시도할 수 있도록 함
+          i = max(i - 1, 0)
+        else:
+          i += 1
+
+    # 첫 토큰 제외하고 앞에 ## 붙이기
+    if not tokens:
+      return []
+    return [tokens[0]] + [f"##{t}" for t in tokens[1:]]
+
 
 if __name__ == '__main__':
   print("BPETokenizer 테스트 시작")
@@ -199,6 +224,13 @@ if __name__ == '__main__':
     print(f"{i + 1}. {pair}")
 
   print("\nload_merge_rules() 테스트 완료")
+
+  # 3. 테스트 단어에 BPE 적용
+  test_words = ["therefore", "thinking", "shakespeare", "hugs", "hello"]
+  print("\napply_bpe() 테스트:")
+  for word in test_words:
+    tokens = tokenizer.apply_BPE(word)
+    print(f"{word} → {' '.join(tokens)}")
 
 # if __name__ == '__main__':
 #   print("Hello, BPE!")
