@@ -211,26 +211,35 @@ class BPETokenizer:
       return []
     return [tokens[0]] + [f"##{t}" for t in tokens[1:]]
 
+  # input_path에 있는 텍스트 파일을 읽고, 각 단어에 BPE 토큰화를 적용하여 output_path에 저장하는 함수
+  # main 함수에서는 tokenize_file 함수 하나만 출력해서 사용할 수 있도록 함.
+  def tokenize_file(self, input_path, output_path):
+    # 파일 열기 (infile: 입력 파일, outfile: 출력 파일)
+    with (open(input_path, 'r', encoding='utf-8') as infile,
+          open(output_path, 'w', encoding='utf-8') as outfile):
+      # 한 줄씩 읽어서 처리
+      for line in infile:
+        # 전처리 과정을 거침
+        words = line.strip().lower().split()
+        tokenized_line = []
+        # 각 단어에 대해 BPE 토큰화 적용 -> tokenized_line에 추가
+        for word in words:
+          tokens = self.apply_BPE(word)
+          tokenized_line.extend(tokens)
+        # tokenized_line을 다시 문자열로 변환하여 출력 파일에 기록
+        outfile.write(' '.join(tokenized_line) + '\n')
+
 
 if __name__ == '__main__':
-  print("BPETokenizer 테스트 시작")
+  print("BPETokenizer 전체 추론 테스트 시작")
 
-  # 1. BPETokenizer 객체 생성
+  # 1. BPETokenizer 객체 생성 (vocab.txt에서 merge_rules를 불러옴)
   tokenizer = BPETokenizer('vocab.txt')
 
-  # 2. merge_rules 출력 (확인용)
-  print("\n불러온 Merge Rules 샘플 (30개)")
-  for i, pair in enumerate(tokenizer.merge_rules[:30]):
-    print(f"{i + 1}. {pair}")
+  # 2. infer.txt를 읽고 BPE 토큰화를 수행하여 output.txt에 저장
+  tokenizer.tokenize_file('infer.txt', 'output.txt')
 
-  print("\nload_merge_rules() 테스트 완료")
-
-  # 3. 테스트 단어에 BPE 적용
-  test_words = ["therefore", "thinking", "shakespeare", "hugs", "hello"]
-  print("\napply_bpe() 테스트:")
-  for word in test_words:
-    tokens = tokenizer.apply_BPE(word)
-    print(f"{word} → {' '.join(tokens)}")
+  print("추론 완료: infer.txt → output.txt")
 
 # if __name__ == '__main__':
 #   print("Hello, BPE!")
