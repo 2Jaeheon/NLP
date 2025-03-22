@@ -142,6 +142,15 @@ class BPETrainer:
         print(f"가장 많이 등장한 pair: {best_pair} → {pair_freq[best_pair]}회")
         prev_vocab_size = curr_vocab_size
 
+  def save_vocab_and_rules(self, vocab_path):
+    with open(vocab_path, 'w', encoding='utf-8') as f:
+      f.write("# ==== Vocabulary ====\n")
+      for word, freq in self.vocab.items():
+        f.write(f"{word} {freq}\n")
+      f.write("\n# ==== Merge Rules ====\n")
+      for pair in self.merge_rules:
+        f.write(f"{pair[0]} {pair[1]}\n")
+
 
 # BPE 토크나이저 클래스
 class BPETokenizer:
@@ -157,10 +166,13 @@ if __name__ == '__main__':
   print("BPETrainer.train() 테스트 시작")
 
   # 1. BPETrainer 객체 생성
-  trainer = BPETrainer(max_vocab_size=5000)
+  trainer = BPETrainer(max_vocab_size=10000)
 
   # 2. train 함수 실행
   trainer.train('pg100.txt')
+
+  # 3. save_vocab_and_rules 함수 실행 -> vocab.txt, merge_rules.txt 파일 생성 및 저장
+  trainer.save_vocab_and_rules('vocab.txt')
 
   print("\n학습된 Vocab 샘플 (30개)")
   for i, (word, freq) in enumerate(trainer.vocab.items()):
