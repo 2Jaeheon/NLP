@@ -36,7 +36,8 @@ class BPETrainer:
     processed = []
     for word in words:
       letters = list(word)
-      spaced_word = ' '.join(letters)  # 문자 단위로 분리된 단어를 공백을 추가하여 문자열로 변환
+      # 문자 단위로 분리된 단어에 공백을 추가해서 문자열로 변환
+      spaced_word = ' '.join(letters)
       processed.append(spaced_word)
 
     return processed
@@ -94,7 +95,8 @@ class BPETrainer:
         if i < len(symbols) - 1 and symbols[i] == target[0] and symbols[
           i + 1] == target[1]:
           new_symbols.append(replacement)  # 병합!
-          i += 2  # 2개 문자를 한꺼번에 처리했으므로 2칸 이동 (i += 1을 하면 안 됨)
+          # 2개 문자를 한꺼번에 처리했으므로 2칸 이동 (i += 1을 하면 안 됨)
+          i += 2
         else:
           new_symbols.append(symbols[i])
           i += 1
@@ -243,6 +245,7 @@ class BPETokenizer:
 
 # main 함수 -> 학습(train) 모드와 추론(infer) 모드를 구분지어서 실행하도록 함.
 if __name__ == '__main__':
+  # argparse를 이용한 인자를 받아옴 -> 이렇게 하면 터미널에서 실행할 때 인자를 넘겨줄 수 있음. 완전 편함.
   parser = argparse.ArgumentParser()
 
   # 학습 모드 (train) 인자
