@@ -10,6 +10,7 @@
 
 import argparse  # 파이썬에서 명령행 옵션을 쉽게 파싱하기 위한 모듈
 import re
+import time
 
 
 # BPE 학습을 위한 클래스
@@ -226,21 +227,29 @@ class BPETokenizer:
   # input_path에 있는 텍스트 파일을 읽고, BPE 토큰화를 적용하여 output_path에 저장하는 함수
   # main 함수에서는 tokenize_file 함수 하나만 사용할 수 있도록 함.
   def tokenize_file(self, input_path, output_path):
-    # 파일 열기 (infile: 입력 파일, outfile: 출력 파일)
+    total_token_count = 0  # 전체 토큰 수를 담을 변수
+    total_word_count = 0  # 원래 단어 수
+
     with (open(input_path, 'r', encoding='utf-8') as infile,
           open(output_path, 'w', encoding='utf-8') as outfile):
-      # 한 줄씩 읽어서 처리
       for line in infile:
-        # 전처리 과정
         words = line.strip().lower().split()
+        total_word_count += len(words)
         tokenized_line = []
+
         # 각 단어에 대해 BPE 토큰화 적용 -> tokenized_line에 추가
         for word in words:
           tokens = self.apply_BPE(word)
           tokenized_line.extend(tokens)
 
+        total_token_count += len(tokenized_line)
         # tokenized_line을 outfile에 씀.
         outfile.write(' '.join(tokenized_line) + '\n')
+
+    # 결과 출력
+    print(f"\n전체 토큰 수: {total_token_count}")
+    print(f"전체 원래 단어 수: {total_word_count}")
+    print(f"평균 분할 수 (토큰 수 / 단어 수): {total_token_count / total_word_count:.2f}")
 
 
 # main 함수 -> 학습(train) 모드와 추론(infer) 모드를 구분지어서 실행하도록 함.
@@ -265,9 +274,13 @@ if __name__ == '__main__':
   if args.train and args.max_vocab and args.vocab:
     print("학습 모드 실행")
     trainer = BPETrainer(args.max_vocab)
+    start_time = time.time()
     trainer.train(args.train)
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"학습 완료 소요 시간: {elapsed_time:.2f}초")
+
     trainer.save_vocab_and_rules(args.vocab)
-    print("학습 완료!")
 
   # 추론 모드
   elif args.infer and args.input and args.output:

@@ -1,9 +1,3 @@
-this is a test
-
-unknowingly unstoppable
-
-internationalization decentralization
-
-therefore project gutenberg
-
-huggingface tokenizers
+Grown-ups never understand anything by themselves,
+and it is tiresome for children to be always
+and forever explaining things to them
