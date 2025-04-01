@@ -102,8 +102,8 @@ class HangeulAutomata:
         self.state = "JONG"
       else:
         self.flush()
+        self.result += char
         self.state = "START"
-        self.process(char)
 
 
     elif self.state == "JONG":
