@@ -141,4 +141,17 @@ class HangeulAutomata:
 
   # 한글 자음 모음을 조합하는 함수
   def combine(self):
-    pass
+    if self.cho is None or self.jung is None:
+      return ""
+
+    try:
+      # 초성, 중성, 종성 인덱스 찾아옴
+      cho_idx = self.CHOSUNG.index(self.cho)
+      jung_idx = self.JUNGSUNG.index(self.jung)
+      jong_idx = self.JONGSUNG.index(self.jong)
+
+      # 초성 중성 종성 조합
+      return chr(0xAC00 + cho_idx * 21 * 28 + jung_idx * 28 + jong_idx +)
+    except ValueError:
+      # 초성, 중성, 종성 리스트에 존재하지 않는 경우
+      return ""
