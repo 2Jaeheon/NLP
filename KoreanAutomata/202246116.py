@@ -31,11 +31,6 @@ class HangeulAutomata:
       'ㄹㅍ': 'ㄿ', 'ㄹㅎ': 'ㅀ', 'ㅂㅅ': 'ㅄ'
     }
 
-    self.COMPLEX_VOWELS = {
-      'ㅗㅏ': 'ㅘ', 'ㅗㅐ': 'ㅙ', 'ㅗㅣ': 'ㅚ',
-      'ㅜㅓ': 'ㅝ', 'ㅜㅔ': 'ㅞ', 'ㅜㅣ': 'ㅟ',
-      'ㅡㅣ': 'ㅢ'
-    }
     # 상태 정의
     self.state = "START"
     self.cho = None
@@ -68,37 +63,12 @@ class HangeulAutomata:
         self.cho = char
         self.state = "CHO"
       elif self.is_vowel(char):
-        # 모음만 입력하면 복모음일 수 있음
+        # 초성이 없는 모음 단독 입력은 바로 중성으로 처리
         self.jung = char
-        self.state = "START_CHK"
-        # START_CHK는 복모음인지를 확인하는 것
+        self.flush()
       else:
         # 특수 문자라면 그대로 출력
         self.result += char
-
-    # 현재 상태가 START_CHK일 때
-    elif self.state == "START_CHK":
-      if self.is_vowel(char):
-        combined = self.jung + char
-        if combined in self.COMPLEX_VOWELS:
-          self.jung = self.COMPLEX_VOWELS[combined]
-          self.state = "START"
-        else:
-          # 복합 모음이 아니라면 다시 처음의 상태로 복귀
-          self.flush()  # 이전 글자를 완성
-          self.state = "START"  # 처음 상태로 전이
-          self.process(char);
-
-      elif self.is_consonant(char):
-        self.flush()
-        self.state = "CHO"
-        self.process(char)
-
-      else:
-        self.flush()
-        self.result += char
-        self.state = "START"
-
 
     # 초성 처리
     # 초성은 자음이 들어오면 그대로 저장하고, 모음이 들어오면 중성으로 전이
@@ -117,19 +87,14 @@ class HangeulAutomata:
     # 중성 처리
     elif self.state == "JUNG":
       if self.is_vowel(char):
-        # 복모음 처리
-        combined = self.jung + char
-        if combined in self.COMPLEX_VOWELS:
-          self.jung = self.COMPLEX_VOWELS[combined]
-        else:
-          self.flush()
-          self.cho = None
-          self.jung = None
-          self.jong = None
-          self.state = "START"
-          # 재귀 호출을 통해서 입력된 문자를 새 시작으로 보도록 함
-          # 즉, START에서 처리하도록 함
-          self.process(char)
+        self.flush()
+        self.cho = None
+        self.jung = None
+        self.jong = None
+        self.state = "START"
+        # 재귀 호출을 통해서 입력된 문자를 새 시작으로 보도록 함
+        # 즉, START에서 처리하도록 함
+        self.process(char)
 
       elif self.is_consonant(char):
         # 자음이 들어왔을 때 종성 후보로 처리 가능한지 확인
