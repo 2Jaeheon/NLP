@@ -8,26 +8,40 @@
 # 7. 실시간 문자 입력 처리
 # 8. 결과 출력
 
+import sys
+import termios
+import tty
+
+
 class HangeulAutomata:
   def __init__(self):
-    self.CHOSUNG = ['ㄱ', 'ㄴ', 'ㄷ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ',
-                    'ㅍ', 'ㅎ', 'ㄲ', 'ㄸ', 'ㅃ', 'ㅆ', 'ㅉ']
-    self.JUNGSUNG = ['ㅏ', 'ㅑ', 'ㅓ', 'ㅕ', 'ㅗ', 'ㅛ', 'ㅜ', 'ㅠ', 'ㅡ', 'ㅣ', 'ㅐ', 'ㅒ',
-                     'ㅔ', 'ㅖ', 'ㅘ', 'ㅙ', 'ㅚ', 'ㅝ', 'ㅞ', 'ㅟ', 'ㅢ']
-    self.JONGSUNG = [' ', 'ㄱ', 'ㄴ', 'ㄷ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ',
-                     'ㅌ', 'ㅍ', 'ㅎ', 'ㄲ', 'ㄳ', 'ㄵ', 'ㄶ', 'ㄺ', 'ㄻ', 'ㄼ', 'ㄽ', 'ㄾ',
-                     'ㄿ', 'ㅀ', 'ㅄ', 'ㅆ']
-    self.COMPLEX_CONSONANTS = {'ㄱㅅ': 'ㄳ', 'ㄴㅈ': 'ㄵ', 'ㄴㅎ': 'ㄶ', 'ㄹㄱ': 'ㄺ',
-                               'ㄹㅁ': 'ㄻ', 'ㄹㅂ': 'ㄼ', 'ㄹㅅ': 'ㄽ', 'ㄹㅌ': 'ㄾ',
-                               'ㄹㅍ': 'ㄿ', 'ㄹㅎ': 'ㅀ', 'ㅂㅅ': 'ㅄ'}
-    self.COMPLEX_VOWELS = {'ㅗㅏ': 'ㅘ', 'ㅗㅐ': 'ㅙ', 'ㅗㅣ': 'ㅚ', 'ㅜㅓ': 'ㅝ',
-                           'ㅜㅔ': 'ㅞ', 'ㅜㅣ': 'ㅟ', 'ㅡㅣ': 'ㅢ'}
+    self.CHOSUNG = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ',
+                    'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ']
 
+    self.JUNGSUNG = ['ㅏ', 'ㅐ', 'ㅑ', 'ㅒ', 'ㅓ', 'ㅔ', 'ㅕ', 'ㅖ', 'ㅗ', 'ㅘ', 'ㅙ', 'ㅚ',
+                     'ㅛ', 'ㅜ', 'ㅝ', 'ㅞ', 'ㅟ', 'ㅠ', 'ㅡ', 'ㅢ', 'ㅣ']
+
+    self.JONGSUNG = [' ', 'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ', 'ㄹ', 'ㄺ', 'ㄻ', 'ㄼ',
+                     'ㄽ', 'ㄾ', 'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅄ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ',
+                     'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ']
+
+    self.COMPLEX_CONSONANTS = {
+      'ㄱㅅ': 'ㄳ', 'ㄴㅈ': 'ㄵ', 'ㄴㅎ': 'ㄶ', 'ㄹㄱ': 'ㄺ',
+      'ㄹㅁ': 'ㄻ', 'ㄹㅂ': 'ㄼ', 'ㄹㅅ': 'ㄽ', 'ㄹㅌ': 'ㄾ',
+      'ㄹㅍ': 'ㄿ', 'ㄹㅎ': 'ㅀ', 'ㅂㅅ': 'ㅄ'
+    }
+
+    self.COMPLEX_VOWELS = {
+      'ㅗㅏ': 'ㅘ', 'ㅗㅐ': 'ㅙ', 'ㅗㅣ': 'ㅚ',
+      'ㅜㅓ': 'ㅝ', 'ㅜㅔ': 'ㅞ', 'ㅜㅣ': 'ㅟ',
+      'ㅡㅣ': 'ㅢ'
+    }
     # 상태 정의
     self.state = "START"
     self.cho = None
     self.jung = None
     self.jong = None
+    self.buffer = None
     self.result = ""
 
   # 자음인지 확인하는 함수
@@ -46,6 +60,8 @@ class HangeulAutomata:
 
   # 문자를 상태별로 처리하는 함수
   def process(self, char):
+    print(
+        f"[입력: {char}] 상태: {self.state}, 초성: {self.cho}, 중성: {self.jung}, 종성: {self.jong}")
     if self.state == "START":
       if self.is_consonant(char):
         # 자음이 입력되면 초성으로 상태 전이
@@ -69,89 +85,196 @@ class HangeulAutomata:
           self.state = "START"
         else:
           # 복합 모음이 아니라면 다시 처음의 상태로 복귀
-          self.state = "START"
-          self.process_input(char);
+          self.flush()  # 이전 글자를 완성
+          self.state = "START"  # 처음 상태로 전이
+          self.process(char);
+
+      elif self.is_consonant(char):
+        self.flush()
+        self.state = "CHO"
+        self.process(char)
+
+      else:
+        self.flush()
+        self.result += char
+        self.state = "START"
+
 
     # 초성 처리
+    # 초성은 자음이 들어오면 그대로 저장하고, 모음이 들어오면 중성으로 전이
     elif self.state == "CHO":
       if self.is_vowel(char):
         self.jung = char
         self.state = "JUNG"
       elif self.is_consonant(char):
+        self.flush()
         self.cho = char
       else:
-        self.result += self.cho
-        self.process(char)
+        self.flush()
+        self.result += char
+        self.state = "START"
 
     # 중성 처리
     elif self.state == "JUNG":
       if self.is_vowel(char):
-        # 복모음인 경우에는 처리
+        # 복모음 처리
         combined = self.jung + char
-        if combined in self.COMPLEX_CONSONANTS:
-          self.jung = self.COMPLEX_CONSONANTS[combined]
-
-        # 복모음이 아니라면 다시 최초의 상태로 돌아가야함.
+        if combined in self.COMPLEX_VOWELS:
+          self.jung = self.COMPLEX_VOWELS[combined]
         else:
-          self.result += self.cho + self.jung
+          self.flush()
           self.cho = None
           self.jung = None
+          self.jong = None
           self.state = "START"
+          # 재귀 호출을 통해서 입력된 문자를 새 시작으로 보도록 함
+          # 즉, START에서 처리하도록 함
           self.process(char)
 
-      # 자음일 때는 바로 종성의 상태로 전이
       elif self.is_consonant(char):
+        # 자음이 들어왔을 때 종성 후보로 처리 가능한지 확인
         self.jong = char
         self.state = "JONG"
-
       else:
-        self.result += self.cho + self.jung
-        self.cho = None
-        self.jung = None
+        self.flush()
         self.state = "START"
         self.process(char)
 
-    # 종성 처리
+
     elif self.state == "JONG":
-      # 종성인 상태에서 모음이 입력되면 중성의 상태로 넘어가야함.
       if self.is_vowel(char):
-        self.cho = self.jong
+        # 종성이 있는 상태에서 모음 입력 -> 새로운 글자
+        temp = self.jong
         self.jong = None
-        self.jung = char
-        self.state = "JONG"
+        self.flush()  # 앞 글자 완성 (초성 + 중성)
+        self.cho = temp  # 이전 종성을 새로운 초성으로 사용해서
+        self.jung = char  # 현재 들어온 모음을 중성으로 사용해서
+        self.state = "JUNG"  # 중성 상태로 전이
 
       elif self.is_consonant(char):
         combined = self.jong + char
+
         if combined in self.COMPLEX_CONSONANTS:
-          self.jong = combined
+          # 복합 자음이 가능한 경우에는 앞과 뒤를 나눠서 처리해야함 (예: ㄹㅂ)
+          self.buffer = char
+          self.flush()  # 이전 글자를 완성
+          self.cho = self.buffer  # 복합 자음의 뒷 부분을 초성으로 설정
+          self.jung = None
+          self.jong = None
+          self.buffer = None
+          self.state = "CHO"
         else:
-          # 겹받침이 불가능한 것
-          self.cho = self.jong
+          # 복합 자음이 아니면 그냥 새 글자 시작
+          self.flush()
+          self.cho = char
+          self.jung = None
           self.jong = None
           self.state = "CHO"
-          self.process(char)
 
       else:
-        self.result += self.cho + self.jung + self.jong
-        self.cho = None
-        self.jung = None
-        self.jong = None
+        self.flush()
+        self.result += char
         self.state = "START"
-        self.process(char)
 
   # 한글 자음 모음을 조합하는 함수
   def combine(self):
-    if self.cho is None or self.jung is None:
+    if self.cho is None or self.cho not in self.CHOSUNG:
       return ""
 
-    try:
-      # 초성, 중성, 종성 인덱스 찾아옴
-      cho_idx = self.CHOSUNG.index(self.cho)
-      jung_idx = self.JUNGSUNG.index(self.jung)
-      jong_idx = self.JONGSUNG.index(self.jong)
+      # 각각 초성, 중성, 종성의 인덱스를 구한다
+    cho_idx = self.CHOSUNG.index(self.cho)
+    jung_idx = self.JUNGSUNG.index(self.jung) if self.jung else 0
+    jong_idx = self.JONGSUNG.index(self.jong) if self.jong else 0
 
-      # 초성 중성 종성 조합
-      return chr(0xAC00 + cho_idx * 21 * 28 + jung_idx * 28 + jong_idx +)
-    except ValueError:
-      # 초성, 중성, 종성 리스트에 존재하지 않는 경우
-      return ""
+    # 완성형 한글 유니코드 = 0xAC00 + (초성 * 21 * 28) + (중성 * 28) + 종성
+    return chr(0xAC00 + (cho_idx * 21 * 28) + (jung_idx * 28) + jong_idx)
+
+  # 현재 조합된 초성, 중성, 종성을 출력하기 상태를 초기화시킴
+  def flush(self):
+    # 초성과 중성이 모두 존재한다면 combine() 함수를 통해 조합
+    if self.cho and self.jung:
+      self.result += self.combine()
+    # 초성만 있다면 자음을 그대로 결과에 추가
+    elif self.cho:
+      self.result += self.cho
+    # 중성이 존재한다면 모음을 그대로 결과에 추가
+    elif self.jung:
+      self.result += self.jung
+
+    # 상태 초기화
+    self.cho = None
+    self.jung = None
+    self.jong = None
+
+  # 프로그램 종료 시 남은 문자를 처리하고 최종 결과를 반환해주는 함수
+  def finalize(self):
+    # 처리중이던 문자를 완성시키고 최종 결과를 반환
+    self.flush()
+    return self.result
+
+
+# 한글은 완성형으로 입력돼서 분리시켜줘야함
+# 예를 들어 강 -> ㄱ, ㅏ, ㅇ 으로 분리되어야 함 그래야 처리가 가능
+def decompose_hangeul(char):
+  '''
+  완성형 한글 문자를 자모 단위로 분리하는 함수\n
+  한글을 입력할 때는 완성된 글자로 입력되기 때문에
+  초성, 중성, 종성으로 나누어주는 역할을 함
+  '''
+  CHOSUNG_LIST = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ',
+                  'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ']
+  JUNGSUNG_LIST = ['ㅏ', 'ㅐ', 'ㅑ', 'ㅒ', 'ㅓ', 'ㅔ', 'ㅕ', 'ㅖ', 'ㅗ', 'ㅘ', 'ㅙ', 'ㅚ',
+                   'ㅛ', 'ㅜ', 'ㅝ', 'ㅞ', 'ㅟ', 'ㅠ', 'ㅡ', 'ㅢ', 'ㅣ']
+  JONGSUNG_LIST = [' ', 'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ', 'ㄹ', 'ㄺ', 'ㄻ', 'ㄼ',
+                   'ㄽ', 'ㄾ', 'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅄ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ',
+                   'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ']
+
+  code = ord(char)
+  # 한글 범위인지 확인 (Unicode 0xAC00 ~ 0xD7A3)
+  if 0xAC00 <= code <= 0xD7A3:
+    code -= 0xAC00
+    cho = CHOSUNG_LIST[code // (21 * 28)]
+    jung = JUNGSUNG_LIST[(code % (21 * 28)) // 28]
+    jong = JONGSUNG_LIST[code % 28]
+    return [cho, jung] + ([jong] if jong != ' ' else [])
+  else:
+    return [char]
+
+
+# 문자열을 입력받아 처리하는 함수
+def getch():
+  fd = sys.stdin.fileno()
+  old_settings = termios.tcgetattr(fd)
+  try:
+    tty.setraw(fd)  # 터미널을 raw 모드로 전환 -> 문자를 입력할 때마다 바로바로 처리
+    char = sys.stdin.read(1)  # 문자를 입력받음
+  finally:
+    termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+  return char
+
+
+def main():
+  automaton = HangeulAutomata()
+  print("Korean Automata 시작! (종료: Ctrl+C)")
+
+  # Ctrl+C를 누를 때까지 무한 반복
+  while True:
+    char = getch()
+
+    # Ctrl+C를 누르면 종료
+    if ord(char) == 3:  # Ctrl+C → 종료
+      final_result = automaton.finalize()
+      print("\n프로그램을 종료합니다.")
+      print("최종 결과:", final_result)
+      break
+
+    # 입력된 문자가 한글이라면 자모 단위로 분리
+    else:
+      for c in decompose_hangeul(char):
+        automaton.process(c)
+
+    sys.stdout.flush()
+
+
+if __name__ == "__main__":
+  main()
