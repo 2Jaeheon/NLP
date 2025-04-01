@@ -92,12 +92,10 @@ class HangeulAutomata:
         self.jung = None
         self.jong = None
         self.state = "START"
-        # 재귀 호출을 통해서 입력된 문자를 새 시작으로 보도록 함
+        # 재귀 호출을 통해서 입력된 문자를 새시작으로 보도록 함
         # 즉, START에서 처리하도록 함
         self.process(char)
-
       elif self.is_consonant(char):
-        # 자음이 들어왔을 때 종성 후보로 처리 가능한지 확인
         self.jong = char
         self.state = "JONG"
       else:
@@ -124,16 +122,11 @@ class HangeulAutomata:
           self.buffer = char
           self.flush()  # 이전 글자를 완성
           self.cho = self.buffer  # 복합 자음의 뒷 부분을 초성으로 설정
-          self.jung = None
-          self.jong = None
-          self.buffer = None
           self.state = "CHO"
         else:
           # 복합 자음이 아니면 그냥 새 글자 시작
           self.flush()
           self.cho = char
-          self.jung = None
-          self.jong = None
           self.state = "CHO"
 
       else:
@@ -146,7 +139,7 @@ class HangeulAutomata:
     if self.cho is None or self.cho not in self.CHOSUNG:
       return ""
 
-      # 각각 초성, 중성, 종성의 인덱스를 구한다
+    # 각각 초성, 중성, 종성의 인덱스를 구함 => 위의 list도 유니코드 순이여야 정상적으로 작동함
     cho_idx = self.CHOSUNG.index(self.cho)
     jung_idx = self.JUNGSUNG.index(self.jung) if self.jung else 0
     jong_idx = self.JONGSUNG.index(self.jong) if self.jong else 0
@@ -197,11 +190,13 @@ def decompose_hangeul(char):
   code = ord(char)
   # 한글 범위인지 확인 (Unicode 0xAC00 ~ 0xD7A3)
   if 0xAC00 <= code <= 0xD7A3:
+    # 한글 범위일 때만 초성, 중성, 종성으로 분리
     code -= 0xAC00
     cho = CHOSUNG_LIST[code // (21 * 28)]
     jung = JUNGSUNG_LIST[(code % (21 * 28)) // 28]
     jong = JONGSUNG_LIST[code % 28]
     return [cho, jung] + ([jong] if jong != ' ' else [])
+  # 한글 범위가 아니라면 문자 그대로 반환
   else:
     return [char]
 
