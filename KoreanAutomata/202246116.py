@@ -32,15 +32,17 @@ class HangeulAutomata:
 
   # 자음인지 확인하는 함수
   def is_consonant(self, char):
-    pass
+    # [1:]은 공백을 제거하기 위함임
+    return char in self.CHOSUNG or char in self.JONGSUNG[1:]
 
   # 모음인지 확인하는 함수
   def is_vowel(self, char):
-    pass
+    return char in self.JUNGSUNG
 
   # 숫자 또는 특수문자인지 확인하는 함수
   def is_other(self, char):
-    pass
+    # consonant도 아니고 vowel도 아니라면 other로 설정
+    return not self.is_consonant(char) and not self.is_vowel(char)
 
   # 문자를 상태별로 처리하는 함수
   def process(self, char):
