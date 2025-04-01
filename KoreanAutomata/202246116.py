@@ -20,8 +20,8 @@ class HangeulAutomata:
     self.COMPLEX_CONSONANTS = {'ㄱㅅ': 'ㄳ', 'ㄴㅈ': 'ㄵ', 'ㄴㅎ': 'ㄶ', 'ㄹㄱ': 'ㄺ',
                                'ㄹㅁ': 'ㄻ', 'ㄹㅂ': 'ㄼ', 'ㄹㅅ': 'ㄽ', 'ㄹㅌ': 'ㄾ',
                                'ㄹㅍ': 'ㄿ', 'ㄹㅎ': 'ㅀ', 'ㅂㅅ': 'ㅄ'}
-    self.COMPLEX_VOELS = {'ㅗㅏ': 'ㅘ', 'ㅗㅐ': 'ㅙ', 'ㅗㅣ': 'ㅚ', 'ㅜㅓ': 'ㅝ',
-                          'ㅜㅔ': 'ㅞ', 'ㅜㅣ': 'ㅟ', 'ㅡㅣ': 'ㅢ'}
+    self.COMPLEX_VOWELS = {'ㅗㅏ': 'ㅘ', 'ㅗㅐ': 'ㅙ', 'ㅗㅣ': 'ㅚ', 'ㅜㅓ': 'ㅝ',
+                           'ㅜㅔ': 'ㅞ', 'ㅜㅣ': 'ㅟ', 'ㅡㅣ': 'ㅢ'}
 
     # 상태 정의
     self.state = "START"
@@ -46,7 +46,98 @@ class HangeulAutomata:
 
   # 문자를 상태별로 처리하는 함수
   def process(self, char):
-    pass
+    if self.state == "START":
+      if self.is_consonant(char):
+        # 자음이 입력되면 초성으로 상태 전이
+        self.cho = char
+        self.state = "CHO"
+      elif self.is_vowel(char):
+        # 모음만 입력하면 복모음일 수 있음
+        self.jung = char
+        self.state = "START_CHK"
+        # START_CHK는 복모음인지를 확인하는 것
+      else:
+        # 특수 문자라면 그대로 출력
+        self.result += char
+
+    # 현재 상태가 START_CHK일 때
+    elif self.state == "START_CHK":
+      if self.is_vowel(char):
+        combined = self.jung + char
+        if combined in self.COMPLEX_VOWELS:
+          self.jung = self.COMPLEX_VOWELS[combined]
+          self.state = "START"
+        else:
+          # 복합 모음이 아니라면 다시 처음의 상태로 복귀
+          self.state = "START"
+          self.process_input(char);
+
+    # 초성 처리
+    elif self.state == "CHO":
+      if self.is_vowel(char):
+        self.jung = char
+        self.state = "JUNG"
+      elif self.is_consonant(char):
+        self.cho = char
+      else:
+        self.result += self.cho
+        self.process(char)
+
+    # 중성 처리
+    elif self.state == "JUNG":
+      if self.is_vowel(char):
+        # 복모음인 경우에는 처리
+        combined = self.jung + char
+        if combined in self.COMPLEX_CONSONANTS:
+          self.jung = self.COMPLEX_CONSONANTS[combined]
+
+        # 복모음이 아니라면 다시 최초의 상태로 돌아가야함.
+        else:
+          self.result += self.cho + self.jung
+          self.cho = None
+          self.jung = None
+          self.state = "START"
+          self.process(char)
+
+      # 자음일 때는 바로 종성의 상태로 전이
+      elif self.is_consonant(char):
+        self.jong = char
+        self.state = "JONG"
+
+      else:
+        self.result += self.cho + self.jung
+        self.cho = None
+        self.jung = None
+        self.state = "START"
+        self.process(char)
+
+    # 종성 처리
+    elif self.state == "JONG":
+      # 종성인 상태에서 모음이 입력되면 중성의 상태로 넘어가야함.
+      if self.is_vowel(char):
+        self.cho = self.jong
+        self.jong = None
+        self.jung = char
+        self.state = "JONG"
+
+      elif self.is_consonant(char):
+        combined = self.jong + char
+        if combined in self.COMPLEX_CONSONANTS:
+          self.jong = combined
+        else:
+          # 겹받침이 불가능한 것
+          self.cho = self.jong
+          self.jong = None
+          self.state = "CHO"
+          self.process(char)
+
+      else:
+        self.result += self.cho + self.jung + self.jong
+        self.cho = None
+        self.jung = None
+        self.jong = None
+        self.state = "START"
+        self.process(char)
 
   # 한글 자음 모음을 조합하는 함수
   def combine(self):
