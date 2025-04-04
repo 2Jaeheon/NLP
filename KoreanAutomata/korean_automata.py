@@ -92,9 +92,7 @@ class HangeulAutomata:
         self.jung = None
         self.jong = None
         self.state = "START"
-        # 재귀 호출을 통해서 입력된 문자를 새시작으로 보도록 함
-        # 즉, START에서 처리하도록 함
-        self.process(char)
+        self.result += char
       elif self.is_consonant(char):
         self.jong = char
         self.state = "JONG"
@@ -113,6 +111,7 @@ class HangeulAutomata:
         self.cho = temp  # 이전 종성을 새로운 초성으로 사용해서
         self.jung = char  # 현재 들어온 모음을 중성으로 사용해서
         self.state = "JUNG"  # 중성 상태로 전이
+        # ex) ㄷ,ㅏ,ㄹ,ㄱ,ㅏ -> "달가"가 되도록 not 닭ㅏ
 
       elif self.is_consonant(char):
         combined = self.jong + char
@@ -170,7 +169,33 @@ class HangeulAutomata:
     self.flush()
     return self.result
 
+  # 백스페이스 처리 함수
+  def backspace(self):
+    # 현재 조합중인 경우에는 조건에 따라 종성 -> 중성 -> 초성 순으로 삭제해야함.
+    if self.state != "START":
+      # 하지만 한글은 완성형 글자이기 때문에 종성일 때는 자동으로 삭제됨
+      # 따라서 초성이 있을 때만 상태를 START로 바꿔주면 됨.
+      if self.state == "CHO":
+        self.cho = None
+        self.state = "START"
+      print("[백스페이스] 현재 남은 글자: " + self.result)
 
+    # 조합이 아닌 경우에는 마지막 글자를 삭제하면 됨.
+    elif self.result:
+      # 마지막 글자
+      last_char = self.result[-1]
+      # 삭제했을 때 결과 문자열
+      self.result = self.result[:-1]
+
+      # 한글 범위 안에 있는 경우에는 START 상태로 바꾸면 됨.
+      if 0xAC00 <= ord(last_char) <= 0xD7A3:
+        self.state = "START"
+      # 한글 범위가 아닌
+      print(
+          "[백스페이스] 한 글자 삭제됨, 남은 글자: " + self.result + "\t삭제한 글자: " + last_char)
+
+
+# 한글을 입력받아 초성, 중성, 종성으로 분리하는 함수
 # 한글은 완성형으로 입력돼서 분리시켜줘야함
 # 예를 들어 강 -> ㄱ, ㅏ, ㅇ 으로 분리되어야 함 그래야 처리가 가능
 def decompose_hangeul(char):
@@ -227,13 +252,13 @@ def main():
       print("\n프로그램을 종료합니다.")
       print("최종 결과:", final_result)
       break
-
+    # 백스페이스 키를 처리
+    elif ord(char) == 127 or ord(char) == 8:
+      automaton.backspace()
     # 입력된 문자가 한글이라면 자모 단위로 분리
     else:
       for c in decompose_hangeul(char):
         automaton.process(c)
-
-    sys.stdout.flush()
 
 
 if __name__ == "__main__":

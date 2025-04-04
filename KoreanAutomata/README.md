@@ -13,7 +13,6 @@
 7. 결과 및 분석
 8. 결론
 
-
 # 1. 과제 개요 및 목적
 
 이 과제는 한글 입력 오토마타를 구현하는 것이 목적입니다. 사용자가 실시간으로 콘솔에 한글(자음, 모음, 숫자)을 입력하면 이를 조합해서 완성형 한글 문자로 만들어주는 프로그램을
@@ -141,20 +140,22 @@ HangeulAutomata의 가장 중요한 역할을 차지하며, 문자를 상태별�
 
 ```python
   def process(self, char):
-  print(
-      f"[입력: {char}] 상태: {self.state}, 초성: {self.cho}, 중성: {self.jung}, 종성: {self.jong}")
-  if self.state == "START":
-    if self.is_consonant(char):
-      # 자음이 입력되면 초성으로 상태 전이
-      self.cho = char
-      self.state = "CHO"
-    elif self.is_vowel(char):
-      # 초성이 없는 모음 단독 입력은 바로 중성으로 처리
-      self.jung = char
-      self.flush()
-    else:
-      # 특수 문자라면 그대로 출력
-      self.result += char
+
+
+print(
+    f"[입력: {char}] 상태: {self.state}, 초성: {self.cho}, 중성: {self.jung}, 종성: {self.jong}")
+if self.state == "START":
+  if self.is_consonant(char):
+    # 자음이 입력되면 초성으로 상태 전이
+    self.cho = char
+    self.state = "CHO"
+  elif self.is_vowel(char):
+    # 초성이 없는 모음 단독 입력은 바로 중성으로 처리
+    self.jung = char
+    self.flush()
+  else:
+    # 특수 문자라면 그대로 출력
+    self.result += char
 ```
 
 2. CHO 상태일 때
@@ -181,7 +182,7 @@ else:
 3. JUNG
 
 - 자음 → JONG 상태로 전이
-- 모음 → 모음이 다시 들어왔기 때문에 flush()로 상태를 초기화하고 현재 문자를 다시 process() 재귀 호출을 통해서 START 상태에서 처리할 수 있도록 처리
+- 모음 → 모음이 다시 들어왔기 때문에 flush()로 상태를 초기화하고 현재 char를 result에 추가해줌.
 - 기타 → flush() 해준 뒤 현재 문자를 결과에 추가
 
 ```python
@@ -193,10 +194,7 @@ if self.is_vowel(char):
   self.jung = None
   self.jong = None
   self.state = "START"
-  # 재귀 호출을 통해서 입력된 문자를 새 시작으로 보도록 함
-  # 즉, START에서 처리하도록 함
-  self.process(char)
-
+  self.result += char
 elif self.is_consonant(char):
   # 자음이 들어왔을 때 종성 후보로 처리 가능한지 확인
   self.jong = char
@@ -246,6 +244,39 @@ else:
   self.result += char
   self.state = "START"
 ```
+
+## Backspace
+
+```python
+# 백스페이스 처리 함수
+def backspace(self):
+  # 현재 조합중인 경우에는 조건에 따라 종성 -> 중성 -> 초성 순으로 삭제해야함.
+  if self.state != "START":
+    # 하지만 한글은 완성형 글자이기 때문에 종성일 때는 자동으로 삭제됨
+    # 따라서 초성이 있을 때만 상태를 START로 바꿔주면 됨.
+    if self.state == "CHO":
+      self.cho = None
+      self.state = "START"
+    print("[백스페이스] 현재 남은 글자: " + self.result)
+
+  # 조합이 아닌 경우에는 마지막 글자를 삭제하면 됨.
+  elif self.result:
+    # 마지막 글자
+    last_char = self.result[-1]
+    # 삭제했을 때 결과 문자열
+    self.result = self.result[:-1]
+
+    # 한글 범위 안에 있는 경우에는 START 상태로 바꾸면 됨.
+    if 0xAC00 <= ord(last_char) <= 0xD7A3:
+      self.state = "START"
+    # 한글 범위가 아닌
+    print(
+        "[백스페이스] 한 글자 삭제됨, 남은 글자: " + self.result + "\t삭제한 글자: " + last_char)
+```
+
+백스페이스 기능은 우선 조합중인지 아니면 이미 만들어저 있는지를 우선적으로 판별한 다음 조합중인 경우에는 초성의 경우에만 START 처리를 해주면 됩니다.
+
+또한, 조합이 되지 않고 완성된 글자의 경우에는 그냥 마지막 글자를 하나 줄이고 START상태로 전이시키면 됩니다.
 
 # 5. 예외 및 고려사항
 
@@ -333,19 +364,29 @@ combine()을 하는 부분에서 index를 가져오는 부분이 있는데, 순�
 
 ```python
   def combine(self):
-  if self.cho is None or self.cho not in self.CHOSUNG:
-    return ""
 
-    # 각각 초성, 중성, 종성의 인덱스를 구한다
-  cho_idx = self.CHOSUNG.index(self.cho)
-  jung_idx = self.JUNGSUNG.index(self.jung) if self.jung else 0
-  jong_idx = self.JONGSUNG.index(self.jong) if self.jong else 0
 
-  # 완성형 한글 유니코드 = 0xAC00 + (초성 * 21 * 28) + (중성 * 28) + 종성
-  return chr(0xAC00 + (cho_idx * 21 * 28) + (jung_idx * 28) + jong_idx)
+if self.cho is None or self.cho not in self.CHOSUNG:
+  return ""
+
+  # 각각 초성, 중성, 종성의 인덱스를 구한다
+cho_idx = self.CHOSUNG.index(self.cho)
+jung_idx = self.JUNGSUNG.index(self.jung) if self.jung else 0
+jong_idx = self.JONGSUNG.index(self.jong) if self.jong else 0
+
+# 완성형 한글 유니코드 = 0xAC00 + (초성 * 21 * 28) + (중성 * 28) + 종성
+return chr(0xAC00 + (cho_idx * 21 * 28) + (jung_idx * 28) + jong_idx)
 ```
 
 따라서 초기의 CHOSUNG, JUNGSUNG, JONGSUNG 리스트를 유니코드에 맞춰서 수정해주었습니다.
+
+## 백스페이스 기능
+
+초기에는 백스페이스를 복잡하게 구현하였으나, 조합중이 아닌 글자인 경우 (예를 들어서 커서가 있는 부분은 조합중인 것이고, 커서가 지나간 부분은 완성된 글자라고 하였습니다.) 즉,
+완성된 글자인 경우에는 백스페이스가 들어갔을 때 바로 하나의 글자를 지우면 되고, 아직 조합중인 경우에는 종성 → 중성 → 초성으로 가야합니다.
+
+하지만 한국어는 완성형 단어이기 때문에 글자를 입력하는 과정에서 지우는 과정을 진행하지 않아도 됩니다. 즉, 종성 → 중성 → 초성인 경우를 모두 구현하는 것이 아닌 초성인
+경우에만 START 상태로 전이시키기만 하면 됩니다.
 
 # 7. 결과 및 분석
 
@@ -356,17 +397,20 @@ combine()을 하는 부분에서 index를 가져오는 부분이 있는데, 순�
 ### 결과: 괄구ㅑ
 
 ```python
-Korean Automata 시작! (종료: Ctrl+C)
+Korean
+Automata
+시작! (종료: Ctrl+C)
 [입력: ㄱ] 상태: START, 초성: None, 중성: None, 종성: None
 [입력: ㅘ] 상태: CHO, 초성: ㄱ, 중성: None, 종성: None
 [입력: ㄹ] 상태: JUNG, 초성: ㄱ, 중성: ㅘ, 종성: None
 [입력: ㄱ] 상태: JONG, 초성: ㄱ, 중성: ㅘ, 종성: ㄹ
 [입력: ㅜ] 상태: CHO, 초성: ㄱ, 중성: None, 종성: None
 [입력: ㅑ] 상태: JUNG, 초성: ㄱ, 중성: ㅜ, 종성: None
-[입력: ㅑ] 상태: START, 초성: None, 중성: None, 종성: None
 
-프로그램을 종료합니다.
-최종 결과: 괄구ㅑ
+프로그램을
+종료합니다.
+최종
+결과: 괄구ㅑ
 ```
 
 ### 분석
@@ -382,8 +426,8 @@ CHO 상태로 전이함
 
 CHO → ㅜ → JUNG: CHO 상태에서 모음(ㅜ)가 들어왔기 때문에 바로 JUNG 상태로 이전
 
-JUNG → ㅑ → START (process()): JUNG 상태에서 모음(ㅑ)가 연속해서 들어왔기 때문에 flush()를 진행해주고, START 상태로 다시 처음부터 시작해야
-함. 따라서 ㅑ를 process()를 통해서 재귀 호출을 시켜서 START 상태부터 재시작 하도록 함.
+JUNG → ㅑ → START: JUNG 상태에서 모음(ㅑ)가 연속해서 들어왔기 때문에 flush()를 진행해주고, START 상태로 다시 처음부터 해야함. 즉 START 상태로
+전이
 
 JUNG → ㅑ: 재귀 호출의 결과로 콘솔창에 한 번 찍혔음.
 
@@ -394,15 +438,18 @@ JUNG → ㅑ: 재귀 호출의 결과로 콘솔창에 한 번 찍혔음.
 ### 결과: 왜ㅐㅐ
 
 ```python
-Korean Automata 시작! (종료: Ctrl+C)
+Korean
+Automata
+시작! (종료: Ctrl+C)
 [입력: ㅇ] 상태: START, 초성: None, 중성: None, 종성: None
 [입력: ㅙ] 상태: CHO, 초성: ㅇ, 중성: None, 종성: None
 [입력: ㅐ] 상태: JUNG, 초성: ㅇ, 중성: ㅙ, 종성: None
 [입력: ㅐ] 상태: START, 초성: None, 중성: None, 종성: None
-[입력: ㅐ] 상태: START, 초성: None, 중성: None, 종성: None
 
-프로그램을 종료합니다.
-최종 결과: 왜ㅐㅐ
+프로그램을
+종료합니다.
+최종
+결과: 왜ㅐㅐ
 ```
 
 ### 분석
@@ -411,10 +458,8 @@ START → ㅇ → CHO: START 상태에서 자음(ㅇ)이 들어왔기 때문에 
 
 CHO → ㅙ → JUNG: CHO 상태에서 모음(ㅙ)이 들어왔기 때문에 JUNG 상태로 전이
 
-JUNG → ㅐ → START(process()): JUNG 상태에서 이전에 이어서 모음(ㅐ)가 연속해서 들어왔기 때문에 초기 상태로 돌아가야 함. 따라서 flush()를 해준뒤,
-process() 재귀 호출을 진행하여 START 상태부터 시작하도록 함.
-
-ㅐ → 재귀 호출로 인한 콘솔창에 출력
+JUNG → ㅐ → START(process()): JUNG 상태에서 이전에 이어서 모음(ㅐ)가 연속해서 들어왔기 때문에 초기 상태로 돌아가야 함. 따라서 START 상태로 바꾼
+뒤 result에 현재 들어온 문자를 추가
 
 START → ㅐ → START: START 상태에서 모음이 들어왔기 때문에 START 상태를 유지
 
@@ -425,14 +470,18 @@ START → ㅐ → START: START 상태에서 모음이 들어왔기 때문에 STA
 ### 결과: 가마
 
 ```python
-Korean Automata 시작! (종료: Ctrl+C)
+Korean
+Automata
+시작! (종료: Ctrl+C)
 [입력: ㄱ] 상태: START, 초성: None, 중성: None, 종성: None
 [입력: ㅏ] 상태: CHO, 초성: ㄱ, 중성: None, 종성: None
 [입력: ㅁ] 상태: JUNG, 초성: ㄱ, 중성: ㅏ, 종성: None
 [입력: ㅏ] 상태: JONG, 초성: ㄱ, 중성: ㅏ, 종성: ㅁ
 
-프로그램을 종료합니다.
-최종 결과: 가마
+프로그램을
+종료합니다.
+최종
+결과: 가마
 ```
 
 ### 분석
@@ -453,15 +502,19 @@ JONG → ㅏ → JUNG: JONG 상태에서 모음(ㅏ)가 들어왔기 때문에 �
 ### 결과: 감1ㅏ
 
 ```python
-Korean Automata 시작! (종료: Ctrl+C)
+Korean
+Automata
+시작! (종료: Ctrl+C)
 [입력: ㄱ] 상태: START, 초성: None, 중성: None, 종성: None
 [입력: ㅏ] 상태: CHO, 초성: ㄱ, 중성: None, 종성: None
 [입력: ㅁ] 상태: JUNG, 초성: ㄱ, 중성: ㅏ, 종성: None
 [입력: 1] 상태: JONG, 초성: ㄱ, 중성: ㅏ, 종성: ㅁ
 [입력: ㅏ] 상태: START, 초성: None, 중성: None, 종성: None
 
-프로그램을 종료합니다.
-최종 결과: 감1ㅏ
+프로그램을
+종료합니다.
+최종
+결과: 감1ㅏ
 ```
 
 ### 분석
@@ -483,7 +536,9 @@ START → ㅏ → START: START 상태에서 모음(ㅏ)이 들어왔기 때문�
 ### 결과: 뷃
 
 ```python
-Korean Automata 시작! (종료: Ctrl+C)
+Korean
+Automata
+시작! (종료: Ctrl+C)
 [입력: ㅂ] 상태: START, 초성: None, 중성: None, 종성: None
 [입력: ㅞ] 상태: CHO, 초성: ㅂ, 중성: None, 종성: None
 [입력: ㄼ] 상태: JUNG, 초성: ㅂ, 중성: ㅞ, 종성: None
@@ -502,6 +557,69 @@ CHO → ㅞ → JUNG: CHO 상태에서 모음(ㅞ)이 들어왔기 때문에 JUN
 
 JUNG → ㄹㅂ → JONG: JUNG 상태에서 자음(ㄹㅂ)이 들어왔기 때문에 JONG 상태로 전이
 
+### 입력:ㄱ,ㅏ,ㅁ,ㅈ,ㅏ,ㄷ,ㅗ,ㄹ,ㅇ,ㅣ,<,<,<    (< is backspace)
+
+### 예상: 감자
+
+### 결과: 감자
+
+```python
+Korean
+Automata
+시작! (종료: Ctrl+C)
+[입력: ㄱ] 상태: START, 초성: None, 중성: None, 종성: None
+[입력: ㅏ] 상태: CHO, 초성: ㄱ, 중성: None, 종성: None
+[입력: ㅁ] 상태: JUNG, 초성: ㄱ, 중성: ㅏ, 종성: None
+[입력: ㅈ] 상태: JONG, 초성: ㄱ, 중성: ㅏ, 종성: ㅁ
+[입력: ㅏ] 상태: CHO, 초성: ㅈ, 중성: None, 종성: None
+[입력: ㄷ] 상태: JUNG, 초성: ㅈ, 중성: ㅏ, 종성: None
+[입력: ㅗ] 상태: JONG, 초성: ㅈ, 중성: ㅏ, 종성: ㄷ
+[입력: ㄹ] 상태: JUNG, 초성: ㄷ, 중성: ㅗ, 종성: None
+[입력: ㅇ] 상태: JONG, 초성: ㄷ, 중성: ㅗ, 종성: ㄹ
+[백스페이스]
+현재
+남은
+글자: 감자돌
+[백스페이스]
+한
+글자
+삭제됨, 남은
+글자: 감자
+삭제한
+글자: 돌
+
+프로그램을
+종료합니다.
+최종
+결과: 감자
+```
+
+START → ㄱ → CHO: START에서 자음 (ㄱ)이 들어왔기 때문에 CHO 상태로 전이
+
+CHO → ㅏ → JUNG: CHO에서 모음이 들어와서 JUNG 상태로 전이
+
+JUNG → ㅁ → JONG: JUNG에서 자음이 들어와서 JONG 상태로 전이
+
+JONG → ㅈ → CHO: JONG에서 자음이 들어왔는데 조합 불가능 → CHO로 전이
+
+CHO → ㅏ → JUNG: CHO에서 모음이 들어와서 JUNG으로 전이
+
+JUNG → ㄷ → JONG: JUNG에서 자음이 들어와서 JONG으로 전이
+
+JONG → ㅗ → JUNG: JONG에서 모음이 들어와서 JUNG으로 전이
+
+JUNG → ㄹ → JONG: JUNG에서 자음이 들어와서 JONG으로 전이
+
+JONG → ㅇ → CHO: JONG에서 자음이 들어왔으나 조합이 불가능 → CHO로 전이
+
+CHO → l → JUNG: CHO에서 모음이 들어와서 JUNG으로 전이
+
+JUNG → backspace → CHO: JUNG에서 백스페이스가 들어왔고, 현재 조합중이므로 CHO 상태(ㅇ)로 변함
+
+CHO → backspace → START: CHO에서 백스페이스가 들어와서 START 상태로 전이
+
+START → backspace → START: START에서 백스페이스가 들어와서 다시 START 상태로 전이
+
 # 8. 결론
 
 이번 과제를 통해서 한글의 구조적 특성 및 조합원리 그리고 컴퓨터에서 어떻게 한국어가 입력처리가 되는지를 Finite State Machine을 활용하여 이해할 수 있었습니다.
@@ -513,4 +631,4 @@ JUNG → ㄹㅂ → JONG: JUNG 상태에서 자음(ㄹㅂ)이 들어왔기 때�
 이번 구현을 통해서 지금껏 한 번도 해보지 못했던 한국어를 어떻게 입력하는지에 관해서 고민해 볼 수 있었고, 한국어 입력기를 만들 수 있을 것이라고는 상상하지 않았지만, 이를
 통해서 한글에 대해서 더욱 깊이 있는 이해를 할 수 있었습니다. 또한, 유니코드와 한국어가 컴퓨터 내에서 어떻게 표현되는지에 대해서 알 수 있어 값진 시간이었습니다.
 
-추후에는 한글 외의 다른 언어에 대한 오토마타도 만들어보고 싶고, 백스페이스 기능 등 다양한 기능을 추가하고 GUI를 추가하여 시각적인 입-출력이 가능하도록 발전시키고 싶습니다.
+추후에는 한글 외의 다른 언어에 대한 오토마타도 만들어보고 싶고, GUI를 추가하여 시각적인 입-출력이 가능하도록 발전시키고 싶습니다.
